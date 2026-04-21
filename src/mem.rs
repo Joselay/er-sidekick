@@ -1,4 +1,4 @@
-//! Live memory editor for Elden Ring.
+//! Memory editor for Elden Ring.
 //!
 //! Attaches to a running `eldenring.exe`, AOB-scans for the `GameDataMan`
 //! static pointer slot, walks a 2-level dereference chain, and reads/writes
@@ -59,7 +59,7 @@ impl Drop for Attached {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-struct LiveStats {
+struct Stats {
     vigor: i32,
     mind: i32,
     endurance: i32,
@@ -234,20 +234,20 @@ impl Session {
         Ok(Session { attached, stats_addr })
     }
 
-    fn read_stats(&self) -> Option<LiveStats> {
-        let mut buf = [0u8; size_of::<LiveStats>()];
+    fn read_stats(&self) -> Option<Stats> {
+        let mut buf = [0u8; size_of::<Stats>()];
         if !read_bytes(&self.attached, self.stats_addr, &mut buf) { return None; }
-        Some(unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const LiveStats) })
+        Some(unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const Stats) })
     }
 
-    fn write_stats(&self, s: &LiveStats) -> bool {
+    fn write_stats(&self, s: &Stats) -> bool {
         let bytes = unsafe {
-            std::slice::from_raw_parts(s as *const _ as *const u8, size_of::<LiveStats>())
+            std::slice::from_raw_parts(s as *const _ as *const u8, size_of::<Stats>())
         };
         write_bytes(&self.attached, self.stats_addr, bytes)
     }
 
-    fn apply_edits(&self, edits: &[(String, StatEdit)]) -> Result<LiveStats, String> {
+    fn apply_edits(&self, edits: &[(String, StatEdit)]) -> Result<Stats, String> {
         let mut s = self.read_stats().ok_or("failed to read current stats")?;
         for (name, edit) in edits {
             let field: &mut i32 = match name.as_str() {
@@ -351,7 +351,7 @@ pub fn run_set(edit_str: &str) {
     let before = sess.read_stats();
     match sess.apply_edits(&edits) {
         Ok(after) => {
-            println!("=== Live edit applied ===");
+            println!("=== Stats updated ===");
             if let Some(b) = before { print_diff(&b, &after); }
             else { print_stats(&after); }
         }
@@ -359,7 +359,7 @@ pub fn run_set(edit_str: &str) {
     }
 }
 
-fn print_stats(s: &LiveStats) {
+fn print_stats(s: &Stats) {
     println!("  Vigor         {:>3}", s.vigor);
     println!("  Mind          {:>3}", s.mind);
     println!("  Endurance     {:>3}", s.endurance);
@@ -373,7 +373,7 @@ fn print_stats(s: &LiveStats) {
     println!("  Runes (memory){:>3}", s.runes_total);
 }
 
-fn print_diff(b: &LiveStats, a: &LiveStats) {
+fn print_diff(b: &Stats, a: &Stats) {
     let rows: [(&str, i32, i32); 11] = [
         ("Vigor",        b.vigor, a.vigor),
         ("Mind",         b.mind, a.mind),
@@ -393,7 +393,7 @@ fn print_diff(b: &LiveStats, a: &LiveStats) {
     }
 }
 
-fn serde_stats(s: &LiveStats) -> String {
+fn serde_stats(s: &Stats) -> String {
     format!(
         "{{\"vigor\":{},\"mind\":{},\"endurance\":{},\"strength\":{},\"dexterity\":{},\"intelligence\":{},\"faith\":{},\"arcane\":{},\"level\":{},\"runes\":{},\"runes_total\":{}}}",
         s.vigor, s.mind, s.endurance, s.strength, s.dexterity, s.intelligence, s.faith, s.arcane, s.level, s.runes, s.runes_total

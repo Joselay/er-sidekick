@@ -2,7 +2,7 @@ use std::env;
 use std::process;
 
 #[cfg(windows)]
-mod live;
+mod mem;
 
 fn usage_and_exit() -> ! {
     eprintln!("usage:");
@@ -32,12 +32,12 @@ fn main() {
         if args.len() < 2 { usage_and_exit(); }
         match args[1].as_str() {
             "read" => match &args[2..] {
-                [] => live::run_read(false),
-                [flag] if flag == "--json" => live::run_read(true),
+                [] => mem::run_read(false),
+                [flag] if flag == "--json" => mem::run_read(true),
                 _ => usage_and_exit(),
             },
             "set" => match &args[2..] {
-                [edits] => live::run_set(edits),
+                [edits] => mem::run_set(edits),
                 _ => usage_and_exit(),
             },
             _ => usage_and_exit(),
