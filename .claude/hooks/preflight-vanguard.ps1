@@ -1,9 +1,13 @@
 # Vanguard pre-flight safety hook for er-sidekick.
 #
-# Reads PreToolUse JSON from stdin. If the tool_input.command is an
-# er-sidekick "live" invocation, verifies that Valorant/Vanguard is fully
+# Reads PreToolUse JSON from stdin. If the tool_input.command invokes
+# er-sidekick (any subcommand), verifies that Valorant/Vanguard is fully
 # stopped. Blocks (exit 2) if anything is still active; allows (exit 0)
 # otherwise. Non-matching commands are passed through unconditionally.
+#
+# All er-sidekick subcommands read/write eldenring.exe memory, which is
+# the category of behavior Vanguard scans for — so every invocation is
+# gated, not just a specific subcommand.
 
 $ErrorActionPreference = 'Stop'
 
@@ -19,21 +23,19 @@ try {
     exit 0
 }
 
-# Match only when `er-sidekick(.exe)?` is immediately followed by `live` as
-# the subcommand. This avoids false positives on things like
-# `ls /path/live/save.sl2` or `er-sidekick read <path containing 'live'>`.
+# Match any token ending in `er-sidekick` or `er-sidekick.exe`. This catches
+# absolute/relative paths (e.g. `./target/release/er-sidekick.exe read`).
 $cleaned = $cmd -replace '["\'']', ' '
 $tokens = ($cleaned -split '\s+') | Where-Object { $_ -ne '' }
 
-$isLive = $false
-for ($i = 0; $i -lt ($tokens.Count - 1); $i++) {
-    $t = $tokens[$i].ToLower()
-    if ($t -match 'er-sidekick(\.exe)?$' -and $tokens[$i + 1].ToLower() -eq 'live') {
-        $isLive = $true
+$isErSidekick = $false
+foreach ($t in $tokens) {
+    if ($t.ToLower() -match 'er-sidekick(\.exe)?$') {
+        $isErSidekick = $true
         break
     }
 }
-if (-not $isLive) { exit 0 }
+if (-not $isErSidekick) { exit 0 }
 
 # --- Vanguard/Valorant safety check ------------------------------------
 
@@ -58,7 +60,7 @@ if ($vgc -and $vgc.Status -ne 'Stopped') {
 if ($problems.Count -eq 0) { exit 0 }
 
 [Console]::Error.WriteLine('')
-[Console]::Error.WriteLine('BLOCKED: er-sidekick live refused — Vanguard/Valorant is still active.')
+[Console]::Error.WriteLine('BLOCKED: er-sidekick refused — Vanguard/Valorant is still active.')
 [Console]::Error.WriteLine('Running this while Vanguard is loaded risks flagging the Valorant account.')
 [Console]::Error.WriteLine('')
 foreach ($p in $problems) { [Console]::Error.WriteLine("  - $p") }
@@ -67,5 +69,5 @@ foreach ($p in $problems) { [Console]::Error.WriteLine("  - $p") }
 [Console]::Error.WriteLine('  Get-Process | Where-Object { $_.Name -match ''VALORANT|Riot|vgc|vgtray|vanguard'' } | Stop-Process -Force')
 [Console]::Error.WriteLine('  sc.exe stop vgc')
 [Console]::Error.WriteLine('  sc.exe stop vgk')
-[Console]::Error.WriteLine('Then retry the live command.')
+[Console]::Error.WriteLine('Then retry the command.')
 exit 2

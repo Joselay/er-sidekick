@@ -2,24 +2,25 @@
 
 ## What this project is
 
-Rust CLI that reads and edits Elden Ring saves (`read` / `patch`) and — on
-Windows — attaches to the running game to edit stats in real time (`live`).
-Designed to be driven by Claude Code as an agent: user asks in natural
-language, Claude Code invokes the CLI, parses output, and calls the right
-subcommand.
+Rust CLI that attaches to a running Elden Ring (`eldenring.exe`) on Windows
+and reads/writes character stats in real time. Designed to be driven by
+Claude Code as an agent: user asks in natural language ("change Dex 25→30",
+"give me 5000 runes", "how are my stats?") and Claude Code invokes the CLI,
+parses its output, and reports back.
 
-## CRITICAL: Vanguard safety protocol for `live` mode
+## CRITICAL: Vanguard safety protocol
 
-This machine has **Riot Vanguard installed** (for Valorant). `live` mode
-does cross-process `ReadProcessMemory` / `WriteProcessMemory` on
-`eldenring.exe`, which is the category of behavior Vanguard scans for.
-Running `live` while Vanguard is active is a potential Valorant account
-ban risk.
+This machine has **Riot Vanguard installed** (for Valorant). Every
+er-sidekick invocation does cross-process `ReadProcessMemory` /
+`WriteProcessMemory` on `eldenring.exe`, which is the category of behavior
+Vanguard scans for. Running er-sidekick while Vanguard is active is a
+potential Valorant account ban risk.
 
-**Before running ANY `live` subcommand (`live read`, `live set`, or a
-future `live *`), always run the pre-flight check and stop anything Riot
-related. Do not skip. Do not assume the previous session left things
-clean — always re-verify.**
+**Before running ANY er-sidekick command, always run the pre-flight check
+and stop anything Riot related. Do not skip. Do not assume the previous
+session left things clean — always re-verify.** The PreToolUse hook in
+`.claude/settings.json` enforces this automatically, but verify manually
+before telling the user you are about to run something.
 
 ### Pre-flight check (run this every time)
 
@@ -43,46 +44,54 @@ Required state before proceeding:
 - `vgc` Status = `Stopped`
 - No Riot/Valorant/Vanguard processes listed
 
-If any check fails, **abort and tell the user** — do not attempt `live`
-commands until state is clean. Offer to retry the stop commands from an
-admin shell if needed.
+If any check fails, **abort and tell the user** — do not attempt commands
+until state is clean. Offer to retry the stop commands from an admin shell
+if needed.
 
-### After `live` use
+### After use
 
 - Tell the user: to play Valorant again, reboot (Vanguard reloads at
   boot). `sc start vgk` alone may not satisfy Vanguard's boot-integrity
   check; reboot is the reliable path.
-- Never launch Valorant in the same session as `live` mode without a
+- Never launch Valorant in the same session as er-sidekick without a
   reboot in between.
 
 ### What does NOT need the pre-flight
 
-- `read` (save file parsing) — no process access, safe to run anytime.
-- `patch` (save file editing) — no process access, safe to run anytime.
-- Building, testing, non-live code changes.
+- Building (`cargo build`), non-runtime code changes — no process access.
 
-Only the `live` subcommand touches another process's memory.
+Everything else (any `er-sidekick read` / `er-sidekick set`) touches the
+game's memory and must be gated.
 
 ## Game context
 
 - Game install: `C:\Program Files\Elden Ring\Game\eldenring.exe`
 - Game version: **2.06.0** (confirmed; supported by veeenu's pointer map)
 - Launched via **Seamless Coop** (`ersc_launcher.exe`) — EAC is disabled
-  at launch by the mod. Save extension is `.co2` not `.sl2` (see
-  `Game\SeamlessCoop\ersc_settings.ini`, line `save_file_extension`).
-- Default save location: `%APPDATA%\EldenRing\<steamid>\ER0000.co2`
+  at launch by the mod.
 
 ## Agent workflow
 
 - User asks in natural language ("change Dex 25→30", "how are my stats?",
   "give me 5000 runes").
-- Prefer `read --json` / `live read --json` for parsing, fall back to the
-  human-readable form only when talking TO the user.
+- Prefer `er-sidekick read --json` for parsing; use the human-readable
+  form only when talking TO the user.
 - For any edit: read current state first, compute the diff, then apply —
   so you can report "X → Y" rather than just "set to Y".
-- For `live set`, the pointer chain requires a character loaded into the
-  world (not title / character select). If you get
-  `"pointer chain walk failed"`, tell the user to load a character first.
+- The pointer chain requires a character loaded into the world (not
+  title / character select). If you get `"pointer chain walk failed"`,
+  tell the user to load a character first.
+
+## CLI surface
+
+```
+er-sidekick read [--json]
+er-sidekick set  <key=value,key=value,...>
+```
+
+Values may be prefixed with `+` or `-` for relative changes.
+Stat keys: `vigor`, `mind`, `endurance`, `strength`, `dexterity`,
+`intelligence`, `faith`, `arcane`, `level`, `runes`, `runes_total`.
 
 ## Pointer / offset facts (do not re-derive)
 
@@ -93,11 +102,8 @@ Memory layout (via veeenu/eldenring-practice-tool, ER 2.06.x):
 - Struct layout: 8×i32 stats packed, 3×u32 pad, level i32, runes i32,
   runes_total i32 (56 bytes total).
 
-Save-file layout (different from memory — do not cross-use):
-- See comments at top of `src/save.rs` for the authoritative offsets.
-
 ## Build / test
 
 - `cargo build --release` — produces `target/release/er-sidekick.exe`
-- No automated tests yet. For `live`, end-to-end requires the game
-  running with a character loaded.
+- No automated tests. End-to-end requires the game running with a
+  character loaded in world.
