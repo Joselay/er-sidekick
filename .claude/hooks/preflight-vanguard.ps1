@@ -1,11 +1,11 @@
-# Vanguard pre-flight safety hook for er-sidekick.
+# Vanguard pre-flight safety hook for er-editor.
 #
 # Reads PreToolUse JSON from stdin. If the tool_input.command invokes
-# er-sidekick (any subcommand), verifies that Valorant/Vanguard is fully
+# er-editor (any subcommand), verifies that Valorant/Vanguard is fully
 # stopped. Blocks (exit 2) if anything is still active; allows (exit 0)
 # otherwise. Non-matching commands are passed through unconditionally.
 #
-# All er-sidekick subcommands read/write eldenring.exe memory, which is
+# All er-editor subcommands read/write eldenring.exe memory, which is
 # the category of behavior Vanguard scans for — so every invocation is
 # gated, not just a specific subcommand.
 
@@ -23,19 +23,19 @@ try {
     exit 0
 }
 
-# Match any token ending in `er-sidekick` or `er-sidekick.exe`. This catches
-# absolute/relative paths (e.g. `./target/release/er-sidekick.exe read`).
+# Match any token ending in `er-editor` or `er-editor.exe`. This catches
+# absolute/relative paths (e.g. `./target/release/er-editor.exe read`).
 $cleaned = $cmd -replace '["\'']', ' '
 $tokens = ($cleaned -split '\s+') | Where-Object { $_ -ne '' }
 
-$isErSidekick = $false
+$isErEditor = $false
 foreach ($t in $tokens) {
-    if ($t.ToLower() -match 'er-sidekick(\.exe)?$') {
-        $isErSidekick = $true
+    if ($t.ToLower() -match 'er-editor(\.exe)?$') {
+        $isErEditor = $true
         break
     }
 }
-if (-not $isErSidekick) { exit 0 }
+if (-not $isErEditor) { exit 0 }
 
 # --- Vanguard/Valorant safety check ------------------------------------
 
@@ -60,7 +60,7 @@ if ($vgc -and $vgc.Status -ne 'Stopped') {
 if ($problems.Count -eq 0) { exit 0 }
 
 [Console]::Error.WriteLine('')
-[Console]::Error.WriteLine('BLOCKED: er-sidekick refused — Vanguard/Valorant is still active.')
+[Console]::Error.WriteLine('BLOCKED: er-editor refused — Vanguard/Valorant is still active.')
 [Console]::Error.WriteLine('Running this while Vanguard is loaded risks flagging the Valorant account.')
 [Console]::Error.WriteLine('')
 foreach ($p in $problems) { [Console]::Error.WriteLine("  - $p") }

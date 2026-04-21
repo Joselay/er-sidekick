@@ -6,8 +6,8 @@ mod mem;
 
 fn usage_and_exit() -> ! {
     eprintln!("usage:");
-    eprintln!("  er-sidekick read [--json]");
-    eprintln!("  er-sidekick set  <key=value,key=value,...>");
+    eprintln!("  er-editor read [--json]");
+    eprintln!("  er-editor set  <key=value,key=value,...>");
     eprintln!();
     eprintln!("  attaches to eldenring.exe and reads/writes stats in real time.");
     eprintln!("  requires EAC to be disabled (e.g. Seamless Coop) and a character");
@@ -22,7 +22,7 @@ fn usage_and_exit() -> ! {
 fn main() {
     #[cfg(not(windows))]
     {
-        eprintln!("er-sidekick requires Windows (reads eldenring.exe memory)");
+        eprintln!("er-editor requires Windows (reads eldenring.exe memory)");
         process::exit(1);
     }
 

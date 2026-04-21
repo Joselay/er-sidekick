@@ -1,4 +1,4 @@
-# er-sidekick — project rules for Claude Code
+# er-editor — project rules for Claude Code
 
 ## What this project is
 
@@ -11,12 +11,12 @@ parses its output, and reports back.
 ## CRITICAL: Vanguard safety protocol
 
 This machine has **Riot Vanguard installed** (for Valorant). Every
-er-sidekick invocation does cross-process `ReadProcessMemory` /
+er-editor invocation does cross-process `ReadProcessMemory` /
 `WriteProcessMemory` on `eldenring.exe`, which is the category of behavior
-Vanguard scans for. Running er-sidekick while Vanguard is active is a
+Vanguard scans for. Running er-editor while Vanguard is active is a
 potential Valorant account ban risk.
 
-**Before running ANY er-sidekick command, always run the pre-flight check
+**Before running ANY er-editor command, always run the pre-flight check
 and stop anything Riot related. Do not skip. Do not assume the previous
 session left things clean — always re-verify.** The PreToolUse hook in
 `.claude/settings.json` enforces this automatically, but verify manually
@@ -53,14 +53,14 @@ if needed.
 - Tell the user: to play Valorant again, reboot (Vanguard reloads at
   boot). `sc start vgk` alone may not satisfy Vanguard's boot-integrity
   check; reboot is the reliable path.
-- Never launch Valorant in the same session as er-sidekick without a
+- Never launch Valorant in the same session as er-editor without a
   reboot in between.
 
 ### What does NOT need the pre-flight
 
 - Building (`cargo build`), non-runtime code changes — no process access.
 
-Everything else (any `er-sidekick read` / `er-sidekick set`) touches the
+Everything else (any `er-editor read` / `er-editor set`) touches the
 game's memory and must be gated.
 
 ## Game context
@@ -74,7 +74,7 @@ game's memory and must be gated.
 
 - User asks in natural language ("change Dex 25→30", "how are my stats?",
   "give me 5000 runes").
-- Prefer `er-sidekick read --json` for parsing; use the human-readable
+- Prefer `er-editor read --json` for parsing; use the human-readable
   form only when talking TO the user.
 - For any edit: read current state first, compute the diff, then apply —
   so you can report "X → Y" rather than just "set to Y".
@@ -85,8 +85,8 @@ game's memory and must be gated.
 ## CLI surface
 
 ```
-er-sidekick read [--json]
-er-sidekick set  <key=value,key=value,...>
+er-editor read [--json]
+er-editor set  <key=value,key=value,...>
 ```
 
 Values may be prefixed with `+` or `-` for relative changes.
@@ -104,6 +104,6 @@ Memory layout (via veeenu/eldenring-practice-tool, ER 2.06.x):
 
 ## Build / test
 
-- `cargo build --release` — produces `target/release/er-sidekick.exe`
+- `cargo build --release` — produces `target/release/er-editor.exe`
 - No automated tests. End-to-end requires the game running with a
   character loaded in world.
