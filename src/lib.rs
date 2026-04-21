@@ -4,6 +4,9 @@ pub mod patch;
 pub mod read;
 pub mod save;
 
+#[cfg(windows)]
+pub mod live;
+
 pub const HEADER_SIZE: usize = 0x300;
 pub const SLOT_CHECKSUM_SIZE: usize = 0x10;
 pub const SLOT_DATA_SIZE: usize = 0x280000;
