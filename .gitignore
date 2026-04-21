@@ -1,8 +1,2 @@
 /target
 Cargo.lock
-
-# Never commit save files
-*.co2
-*.sl2
-*.bak
-*.predeploy-bak

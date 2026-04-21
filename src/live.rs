@@ -14,8 +14,6 @@
 //!   +0x20..0x2b  padding (3 u32)
 //!   +0x2c level  +0x30 runes (held)  +0x34 runes_total (memory)
 //!
-//! This is a DIFFERENT layout from the save file — do not reuse save offsets.
-//!
 //! Writing a stat updates the game's stat menu immediately. Derived values
 //! (HP, FP, stamina, attack power) only recalc on triggers like opening the
 //! equip menu or resting at a site of grace.
@@ -47,7 +45,7 @@ const RIP_NEXT_OFFSET: usize = 7;
 
 const CHAIN_OFFSETS: [usize; 2] = [0x8, 0x3c];
 
-pub struct Attached {
+struct Attached {
     proc: HANDLE,
     module_base: usize,
     module_size: usize,
@@ -60,23 +58,23 @@ impl Drop for Attached {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default)]
-pub struct LiveStats {
-    pub vigor: i32,
-    pub mind: i32,
-    pub endurance: i32,
-    pub strength: i32,
-    pub dexterity: i32,
-    pub intelligence: i32,
-    pub faith: i32,
-    pub arcane: i32,
-    pub _pad: [u32; 3],
-    pub level: i32,
-    pub runes: i32,
-    pub runes_total: i32,
+#[derive(Clone, Copy)]
+struct LiveStats {
+    vigor: i32,
+    mind: i32,
+    endurance: i32,
+    strength: i32,
+    dexterity: i32,
+    intelligence: i32,
+    faith: i32,
+    arcane: i32,
+    _pad: [u32; 3],
+    level: i32,
+    runes: i32,
+    runes_total: i32,
 }
 
-pub struct Session {
+struct Session {
     attached: Attached,
     stats_addr: usize,
 }
@@ -220,7 +218,7 @@ fn eval_chain(a: &Attached, base: usize, offsets: &[usize]) -> Option<usize> {
 }
 
 impl Session {
-    pub fn attach() -> Result<Self, String> {
+    fn attach() -> Result<Self, String> {
         let pid = find_pid(PROC_NAME)
             .ok_or_else(|| format!("{PROC_NAME} not running"))?;
         let attached = open_and_get_main_module(pid)?;
@@ -236,20 +234,20 @@ impl Session {
         Ok(Session { attached, stats_addr })
     }
 
-    pub fn read_stats(&self) -> Option<LiveStats> {
+    fn read_stats(&self) -> Option<LiveStats> {
         let mut buf = [0u8; size_of::<LiveStats>()];
         if !read_bytes(&self.attached, self.stats_addr, &mut buf) { return None; }
         Some(unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const LiveStats) })
     }
 
-    pub fn write_stats(&self, s: &LiveStats) -> bool {
+    fn write_stats(&self, s: &LiveStats) -> bool {
         let bytes = unsafe {
             std::slice::from_raw_parts(s as *const _ as *const u8, size_of::<LiveStats>())
         };
         write_bytes(&self.attached, self.stats_addr, bytes)
     }
 
-    pub fn apply_edits(&self, edits: &[(String, StatEdit)]) -> Result<LiveStats, String> {
+    fn apply_edits(&self, edits: &[(String, StatEdit)]) -> Result<LiveStats, String> {
         let mut s = self.read_stats().ok_or("failed to read current stats")?;
         for (name, edit) in edits {
             let field: &mut i32 = match name.as_str() {
@@ -283,8 +281,8 @@ impl Session {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum StatEdit {
+#[derive(Clone, Copy)]
+enum StatEdit {
     Set(i32),
     Add(i32),
 }
@@ -298,7 +296,7 @@ impl StatEdit {
     }
 }
 
-pub fn parse_edits(s: &str) -> Result<Vec<(String, StatEdit)>, String> {
+fn parse_edits(s: &str) -> Result<Vec<(String, StatEdit)>, String> {
     let mut out = Vec::new();
     for part in s.split(',') {
         let part = part.trim();

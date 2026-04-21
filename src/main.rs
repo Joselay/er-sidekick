@@ -1,6 +1,9 @@
 use std::env;
 use std::process;
 
+#[cfg(windows)]
+mod live;
+
 fn usage_and_exit() -> ! {
     eprintln!("usage:");
     eprintln!("  er-sidekick read [--json]");
@@ -25,7 +28,6 @@ fn main() {
 
     #[cfg(windows)]
     {
-        use er_sidekick::live;
         let args: Vec<String> = env::args().collect();
         if args.len() < 2 { usage_and_exit(); }
         match args[1].as_str() {
